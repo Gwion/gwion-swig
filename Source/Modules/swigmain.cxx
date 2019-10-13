@@ -30,6 +30,7 @@ extern "C" {
   Language *swig_d(void);
   Language *swig_go(void);
   Language *swig_guile(void);
+  Language *swig_gwion(void);
   Language *swig_java(void);
   Language *swig_javascript(void);
   Language *swig_lua(void);
@@ -59,6 +60,7 @@ static TargetLanguageModule modules[] = {
   {"-d", swig_d, "D", Supported},
   {"-go", swig_go, "Go", Supported},
   {"-guile", swig_guile, "Guile", Supported},
+  {"-gwion", swig_gwion, "Gwion", Supported},
   {"-java", swig_java, "Java", Supported},
   {"-javascript", swig_javascript, "Javascript", Supported},
   {"-lua", swig_lua, "Lua", Supported},

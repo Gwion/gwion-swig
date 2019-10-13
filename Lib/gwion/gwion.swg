@@ -1,0 +1,11 @@
+%include <init.i>
+%include <in.i>
+%include <check.i>
+%include <offset.i>
+%include <out.i>
+%include <freearg.i>
+%include <constant.i>
+%include <ffi.i>
+%include <gwclass.i>
+%include <gwinclude.i>
+%include <nspc.i>

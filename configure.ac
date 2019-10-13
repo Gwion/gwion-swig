@@ -367,6 +367,12 @@ case $host in
    *) GUILE_SO=$SO;;
 esac
 
+AC_SUBST(GWION_SO)
+case $host in
+   *-*-darwin*) GWION_SO=.so;;
+   *) GWION_SO=$SO;;
+esac
+
 AC_SUBST(PHP_SO)
 case $host in
    *-*-darwin*) PHP_SO=.so;;
@@ -1817,6 +1823,96 @@ fi
 AC_SUBST(GUILE)
 AC_SUBST(GUILE_CFLAGS)
 AC_SUBST(GUILE_LIBS)
+
+#----------------------------------------------------------------
+# Look for Gwion
+#----------------------------------------------------------------
+
+GWION=
+GWION_CFLAGS=
+GWION_LIBS=
+
+AC_ARG_WITH(gwion-config, AS_HELP_STRING([--without-gwion], [Disable Gwion])
+AS_HELP_STRING([--with-gwion-config=path], [Set location of gwion-config]),[ GWION_CONFIG="$withval"], [GWION_CONFIG=])
+AC_ARG_WITH(gwion,[  --with-gwion=path       Set location of Gwion executable],[
+	GWION="$withval"], [GWION="$alllang_default"])
+AC_ARG_WITH(gwion-cflags,[  --with-gwion-cflags=cflags   Set cflags required to compile against Gwion],[
+	GWION_CFLAGS="$withval"])
+AC_ARG_WITH(gwion-libs,[  --with-gwion-libs=ldflags    Set ldflags needed to link with Gwion],[
+	GWION_LIBS="$withval"])
+
+# First, check for "--without-gwion" or "--with-gwion=no".
+if test x"${GWION}" = xno; then
+  AC_MSG_NOTICE([Disabling Gwion])
+else
+  if test -z "$GWION_CONFIG" ; then
+    AC_PATH_PROG(GWION_CONFIG, gwion-config)
+  fi
+  if test -n "$GWION_CONFIG" ; then
+    if test x"$GWION" = xyes; then
+      AC_MSG_CHECKING([for gwion executable])
+      # Try extracting it via gwion-config first. If it's defined there it's the most reliable result
+      GWION="`$GWION_CONFIG info gwion 2>/dev/null`"
+      if test -n "$GWION";  then
+        AC_MSG_RESULT([$GWION])
+      else
+        AC_MSG_RESULT([not found via gwion-config - constructing path])
+        AC_MSG_CHECKING([for gwion bindir])
+        gwion_bindir="`$GWION_CONFIG info bindir`"
+        AC_MSG_RESULT([$gwion_bindir])
+        GWION="$gwion_bindir/gwion"
+      fi
+      if ! test -f "$GWION" ; then
+        GWION=
+        AC_PATH_PROG(GWION, gwion)
+      fi
+      if test -z "$GWION" ; then
+        AC_MSG_WARN([no suitable gwion executable found. Disabling Gwion])
+      fi
+    fi
+
+#    if test -n "$GWION" ; then
+#      AC_MSG_CHECKING([for gwion version])
+#      gwion_version=`$GWION -c '(display (effective-version))'`
+#      AC_MSG_RESULT([$gwion_version])
+#      AC_MSG_CHECKING([for gwion version >= 1.8])
+#      gwion_good_version=`$GWION -c '(if (>= (string->number (effective-version)) 1.8) (display "yes") (display "no"))'`
+#      AC_MSG_RESULT([$gwion_good_version])
+#      if test x"$gwion_good_version" != xyes ; then
+#        AC_MSG_WARN([at least gwion version 1.8 is required. Disabling Gwion])
+#        GWION=
+#      fi
+#    fi
+
+#    if test -n "$GWION" ; then
+#      # Test if gwion-config and gwion versions match. They should.
+#      gc_version="`$GWION_CONFIG --version 2>&1 | sed '1 s/.* //;q'`"
+#      g_version="`$GWION --version | sed '1 s/.* //;q'`"
+#      if test "$gc_version" != "$g_version"; then
+#        AC_MSG_WARN([different versions reported by $GWION_CONFIG ($gc_version) and $GWION ($g_version). Disabling Gwion])
+#        GWION=
+#      fi
+#    fi
+
+    if test -n "$GWION" ; then
+      if test -z "$GWION_CFLAGS" ; then
+        AC_MSG_CHECKING([for gwion compile flags])
+        GWION_CFLAGS="`$GWION_CONFIG compile`" # Note that this can sometimes be empty
+        AC_MSG_RESULT([$GWION_CFLAGS])
+      fi
+
+      if test -z "$GWION_LIBS" ; then
+        AC_MSG_CHECKING([for gwion link flags])
+        GWION_LIBS="`$GWION_CONFIG link`"
+        AC_MSG_RESULT([$GWION_LIBS])
+      fi
+    fi
+  fi
+fi
+
+AC_SUBST(GWION)
+AC_SUBST(GWION_CFLAGS)
+AC_SUBST(GWION_LIBS)
 
 #----------------------------------------------------------------
 # Look for MzScheme

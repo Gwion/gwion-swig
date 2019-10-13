@@ -572,6 +572,63 @@ guile_clean:
 	rm -f *.@OBJEXT@ *$(GUILE_SO)
 
 ##################################################################
+#####                       GWION                           ######
+##################################################################
+
+# Make sure these locate your Gwion installation
+GWION         = @GWION@
+GWION_CFLAGS  = @GWION_CFLAGS@
+GWION_SO      = @GWION_SO@
+GWION_LIBS    = @GWION_LIBS@
+GWION_LIBOPTS = @LIBS@ $(SYSLIBS)
+GWION_LIBPREFIX = lib
+#GWION         = gwion
+#GWION_BASE    = /home/djay/src/git/gwion/gwion-github
+#GWION_CFLAGS  = -I${GWION_BASE}/util/include -I${GWION_BASE}/ast/include -I${GWION_BASE}/include
+#GWION_SO      = .so
+#GWION_LIBS    = -ldl -fPIC
+#GWION_LIBOPTS = @LIBS@ $(SYSLIBS)
+#GWION_LIBPREFIX = lib
+GWION_OPT  = -p.
+GWION_SCRIPT  = $(SRCDIR)$(RUNME).gw
+
+#------------------------------------------------------------------
+# Build a dynamically loaded module with passive linkage
+#------------------------------------------------------------------
+gwion: $(SRCDIR_SRCS)
+	$(SWIG) -gwion $(SWIGOPT) -o $(ISRCS) $(INTERFACEPATH)
+	$(CC) -c $(CCSHARED) $(CPPFLAGS) $(CFLAGS) $(INCLUDES) $(GWION_CFLAGS) $(ISRCS) $(SRCDIR_SRCS)
+	$(LDSHARED) $(CFLAGS) $(LDFLAGS) $(OBJS) $(IOBJS) $(GWION_LIBS) $(LIBS) -o $(GWION_LIBPREFIX)$(TARGET)$(GWION_SO)
+
+gwion_cpp: $(SRCDIR_SRCS)
+	$(SWIG) -c++ -gwion $(SWIGOPT) -o $(ICXXSRCS) $(INTERFACEPATH)
+	$(CXX) -c $(CCSHARED) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) $(GWION_CFLAGS) $(ICXXSRCS) $(SRCDIR_SRCS) $(SRCDIR_CXXSRCS)
+	$(CXXSHARED) $(CXXFLAGS) $(LDFLAGS) $(OBJS) $(IOBJS) $(GWION_LIBS) $(LIBS) $(CPP_DLLIBS) -o $(GWION_LIBPREFIX)$(TARGET)$(GWION_SO)
+
+# -----------------------------------------------------------------
+# Running a Gwion example
+# -----------------------------------------------------------------
+
+gwion_run:
+	env $(RUNTOOL) $(GWION) $(GWION_OPT) $(GWION_SCRIPT) $(RUNPIPE)
+
+# -----------------------------------------------------------------
+# Version display
+# -----------------------------------------------------------------
+
+gwion_version:
+	$(GWION) --version | head -n 1
+
+# -----------------------------------------------------------------
+# Cleaning the Gwion examples
+# -----------------------------------------------------------------
+
+gwion_clean:
+	rm -f *_wrap* *~ .~* my-gwion@EXEEXT@ $(TARGET)@EXEEXT@
+	rm -f core @EXTRA_CLEAN@
+	rm -f *.@OBJEXT@ *$(GWION_SO)
+
+##################################################################
 #####                       JAVA                            ######
 ##################################################################
 
