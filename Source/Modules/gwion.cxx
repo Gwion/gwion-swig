@@ -154,7 +154,6 @@ class GWION : public Language {
   }
 
   virtual int functionWrapper(Node *n) {
-//return SWIG_OK;
     bool is_member = GetFlag(n, "ismember") != 0;
     bool is_setter = GetFlag(n, "memberset") != 0 || GetFlag(n, "varset") != 0;
     bool is_getter = GetFlag(n, "memberget") != 0 || GetFlag(n, "varget") != 0;
@@ -493,9 +492,9 @@ Printf(f->code, "// emit return variable\n");
       Setattr(n, "base_class", base_class);
     } else {
       Printf(f_types, "static Type t_%s;\n", symname);
-      Printf(f_init,
-          "t_%s = gwi_mk_type(gwi, (m_str)\"%s\", SZ_INT, \"%s\");\n",
-          symname, symname, Getattr(n, "feature:inherit") ?: "Object"); // TODO test mem
+//      Printf(f_init,
+//          "t_%s = gwi_mk_type(gwi, (m_str)\"%s\", SZ_INT, \"%s\");\n",
+//          symname, symname, Getattr(n, "feature:inherit") ?: "Object"); // TODO test mem
     }
     if(!baselist) {
       String *swig_getter = NewStringf("GW_%s", symname);
@@ -511,22 +510,16 @@ Printf(f->code, "// emit return variable\n");
     String* default_ctor = Getattr(n, "gwion:default_ctor");
     bool is_abstract = (!default_ctor && Getattr(n, "gwion:has_ctor")) || GetFlag(n, "abstracts");
     String *dtor = is_abstract ? Getattr(n, "gwion:dtor") : NULL;
-    Printf(f_init,
-        "CHECK_BB(gwi_class_ini(gwi, t_%s, %s, %s));\n",
-        symname, default_ctor ? default_ctor : "NULL", dtor ? dtor : "NULL");
-    if(is_abstract || !default_ctor) {
+    basename = Getattr(base_class, "name");
+    Printf(f_init, "const Type t_%s = gwi_class_ini(gwi, \"%s\", \"%s\");\n",
+        symname, symname, basename);
+    if(is_abstract || !default_ctor)
       Printf(f_init, "SET_FLAG(t_%s, abstract);\n", symname);
-//      Printf(f_init, "int %s_flag = t_%s->flag;", symname, symname);
-//      Printf(f_init, "%s_flag |= ae_flag_abstract;\n", symname, symname);
-//      Printf(f_init, "t_%s->flag = (ae_flag)%s_flag;\n", symname, symname);
-    }
-
     if(!baselist)
       Printf(f_init,
-"CHECK_BB(gwi_item_ini(gwi, \"int\", \"@Swig_%s_Object\"))\n"
+          "CHECK_BB(gwi_item_ini(gwi, \"@internal\", \"@Swig_%s_Object\"))\n"
           "CHECK_BB((o_%s_swig = gwi_item_end(gwi, ae_flag_member, NULL)))\n",
           symname, symname, symname, symname);
-
     /* Done, close the class and dump its definition to the init function */
     Dump(f_classInit, f_init);
     Clear(f_classInit);
