@@ -15,9 +15,6 @@
 %{ALLOC_PTR(gwi->gwion->mp, $symname_value, m_float, $1);%}
 
 %typemap(constant) char*, const char*
-%{
-//M_Object $symname_value = new_string(gwi->gwion->mp, NULL, (m_str)s_name(insert_symbol(gwi->gwion->st, "$1")));
-  const M_Object $symname_value = new_object(gwi->gwion->mp, NULL, gwi->gwion->type[et_string]);
-  STRING($symname_value) = s_name(insert_symbol(gwi->gwion->st, "$1"));
-%}
+%{const M_Object $symname_value = new_object(gwi->gwion->mp, NULL, gwi->gwion->type[et_string]);
+  STRING($symname_value) = s_name(insert_symbol(gwi->gwion->st, "$1"));%}
 

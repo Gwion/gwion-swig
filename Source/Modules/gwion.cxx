@@ -264,7 +264,6 @@ Printf(f->code, "// emit arg in\n");
       }
     }
 
-Printf(f->code, "// emit free arg\n");
     /* Insert cleanup code */
     String *cleanup = NewString("");
     for (p = l; p;) {
@@ -276,10 +275,8 @@ Printf(f->code, "// emit free arg\n");
       }
     }
 
-Printf(f->code, "// emit arg out\n");
     /* Insert argument output code */
     String *outarg = NewString("");
-
     for (p = l; p;) {
       if ((tm = Getattr(p, "tmap:argout"))) {
         Replaceall(tm, "$target", "resultobj");
@@ -303,12 +300,7 @@ Printf(f->code, "// emit arg out\n");
           Replaceall(actioncode, ")", class_name);
           Delete(class_name);
     }
-/*
-    if(is_setter && Cmp(Getattr(n, "storage"), "static")) {
-      Printf(f->code, "result = arg%i;\n", is_member ? 2 : 1);
-      //Replaceall(f->code, "RETURN = ;\n");
-    }
-*/
+
     if (default_ctor) {
       Clear(actioncode);
       if(!Getattr(getCurrentClass(), "abstracts")) {
@@ -350,8 +342,7 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
       Delete(actioncode);
     }
 */
-Printf(f->code, "// emit return variable\n");
-//    emit_return_variable(n, is_setter ? Getattr(interrest, "type") : type, f);
+
     emit_return_variable(n, type, f);
 
     if(dtor_attr) {
@@ -393,8 +384,7 @@ Printf(f->code, "// emit return variable\n");
     String *symname = strip2(Getattr(n, "name"));
     if(!dtor_attr && !default_ctor) {
       String *f_target = !getCurrentClass() ? f_init : f_classInit;
-      Printf(f_target, "\nCHECK_BB(gwi_func_ini(gwi, \"%s\", \"%s\", %s))\n",
-        ffi, symname, wname);
+      Printf(f_target, "\nCHECK_BB(gwi_func_ini(gwi, \"%s\", \"%s\"))\n", ffi, symname);
     Delete(symname);
     if(import_args(f_target, ((mvar || mfunc))? nextSibling(l) : l) == SWIG_ERROR)
       return SWIG_ERROR;
@@ -402,7 +392,7 @@ Printf(f->code, "// emit return variable\n");
           !ctor_attr?
         "ae_flag_member" : (getCurrentClass() || Getattr(n, "feature:nspc"))?
         "ae_flag_static" : "(ae_flag)ae_flag_global";
-      Printf(f_target, "CHECK_BB(gwi_func_end(gwi, %s))\n\n", flag);
+      Printf(f_target, "CHECK_BB(gwi_func_end(gwi, %s, %s))\n\n", flag, wname);
     }
     Delete(cleanup);
     Delete(outarg);
@@ -509,7 +499,6 @@ Printf(f->code, "// emit return variable\n");
 
     String* default_ctor = Getattr(n, "gwion:default_ctor");
     bool is_abstract = (!default_ctor && Getattr(n, "gwion:has_ctor")) || GetFlag(n, "abstracts");
-    String *dtor = is_abstract ? Getattr(n, "gwion:dtor") : NULL;
     basename = Getattr(base_class, "name");
     Printf(f_init, "const Type t_%s = gwi_class_ini(gwi, \"%s\", \"%s\");\n",
         symname, symname, basename);
