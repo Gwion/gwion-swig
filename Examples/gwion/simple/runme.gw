@@ -1,0 +1,9 @@
+<<<example.Foo()>>>;
+<<<example.Foo(2.12)>>>;
+<<<example.Foo()>>>;
+<<<example.gcd(2, 3)>>>;
+
+add_raw @=> i2i ref f;
+<<<(2,3) => example.add>>>;
+<<<example.binary_op(1,2, f)>>>;
+<<<example.binary_op(1,2, add_raw)>>>;

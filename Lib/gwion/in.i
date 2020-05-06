@@ -14,5 +14,5 @@
 %typemap(in) SWIGTYPE (M_Object temp) %{
   if(!((temp = *(M_Object*)MEM($offset)) &&
          ($1 = *($ltype*)(temp->data))))
-    Except(shred, "NullPtrException");
+    Except(shred, (m_str)"NullPtrException");
 %}

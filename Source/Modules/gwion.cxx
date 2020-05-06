@@ -142,7 +142,7 @@ class GWION : public Language {
       const String* tm = Swig_typemap_lookup("ffi", p, Swig_cresult_name(), 0);
       if(!tm) {
         const String* type = Getattr(p, "type");
-        Swig_warning(WARN_NONE, input_file, line_number,
+        Swig_error(input_file, line_number,
             "'ffi' undefined for argument %s %s\n",
             SwigType_str(type, 0), lname);
         return SWIG_ERROR;
@@ -177,16 +177,20 @@ class GWION : public Language {
       mvar ? nextSibling(l) : l : n;
 
       String* ffi = Swig_typemap_lookup("ffi", n, Swig_cresult_name(), 0);
-if(is_setter)
-  ffi = Swig_typemap_lookup("ffi", interrest, "", 0);
+      if(is_setter)
+        String *ffi = Swig_typemap_lookup("ffi", interrest, "", 0);
+    if(!ffi) {
+      Swig_error(input_file, line_number,
+          "'ffi' undefined for return value %s\n",
+          SwigType_str(type, 0));
+      return SWIG_ERROR;
+    }
+
     Parm *p;
     String *tm;
     Wrapper *f = NewWrapper();
-//    if(!dtor_attr)
-{
-      emit_parameter_variables(l, f);
+    emit_parameter_variables(l, f);
     emit_attach_parmmaps(l, f);
-} //else puts("got dtor");
     Setattr(n, "wrap:parms", l);
 
     int num_arguments = emit_num_arguments(l);
@@ -203,40 +207,31 @@ if(is_setter)
         Setattr(getCurrentClass(), "gwion:has_ctor", wname);
     }
 
-    if(dtor_attr){
+    if(dtor_attr)
       Printf(f->def, "static DTOR(%s) {\n", wname);
-}    else if(default_ctor)
+    else if(default_ctor)
       Printf(f->def, "static CTOR(%s) {\n", wname);
     else if(mfunc || (member_attr != 0))
       Printf(f->def, "static MFUN(%s) {\n", wname);
     else
       Printf(f->def, "static SFUN(%s) {\n", wname);
-/*
-    if (dtor_attr) {
-      Printf(f->code, "%s* arg1;\n", member_attr ? member_attr :
-        Getattr(getCurrentClass(), "name"));
-      l = nextSibling(l);
-    }
-*/
     String* offset = NewString("0");
-if (!dtor_attr) {
-Printf(f->code, "// emit arg in\n");
-    for(p = member_attr ? nextSibling(l) : l; p;) {
-//    for(p = l; p;) {
-      while (checkAttribute(p, "tmap:in:numinputs", "0"))
-        p = Getattr(p, "tmap:in:next");
-      SwigType *arg_type = Getattr(p, "type");
-      String   *arg_name = Getattr(p, "lname");
-      /* Look for an input typemap */
-      if ((tm = Getattr(p, "tmap:in"))) {
-        Replaceall(tm, "$1", arg_name);
-        Replaceall(tm, "$offset", offset);
-        Printv(f->code, tm, "\n", NIL);
-      } else {
-        Swig_warning(WARN_TYPEMAP_IN_UNDEF, input_file, line_number,
-          "in function '%s'\n"
-          "\tUnable to use type %s as a function argument.\n",
-          name, SwigType_str(arg_type, 0));
+    if (!dtor_attr) {
+      for(p = member_attr ? nextSibling(l) : l; p;) {
+        while (checkAttribute(p, "tmap:in:numinputs", "0"))
+          p = Getattr(p, "tmap:in:next");
+        SwigType *arg_type = Getattr(p, "type");
+        String   *arg_name = Getattr(p, "lname");
+        /* Look for an input typemap */
+        if ((tm = Getattr(p, "tmap:in"))) {
+          Replaceall(tm, "$1", arg_name);
+          Replaceall(tm, "$offset", offset);
+          Printv(f->code, tm, "\n", NIL);
+        } else {
+          Swig_error(input_file, line_number,
+            "in function '%s'\n"
+            "\tUnable to use type %s as a function argument.\n",
+            name, SwigType_str(arg_type, 0));
         return SWIG_ERROR;
       }
       Parm* next = nextSibling(p);
@@ -244,7 +239,7 @@ Printf(f->code, "// emit arg in\n");
         Append(offset, tm);
       p = next;
     }
-}
+  }
     Delete(offset);
     /* Check for trailing varargs */
     if (varargs) {
@@ -318,33 +313,22 @@ Printf(f->code, "// emit arg in\n");
     } else if (dtor_attr)
       Setattr(getCurrentClass(), "gwion:dtor", wname);
     else {
-
-//if ((tm = Swig_typemap_lookup_out("out", is_setter ? interrest : n, Swig_cresult_name(), f, actioncode))) {
-if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))) {
+      if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))) {
         actioncode = 0;
         Replaceall(tm, "$result", "resultobj");
         if(getCurrentClass()) {
           String *class_sym = Getattr(getCurrentClass(), "sym:name");
           Replaceall(tm, "$ltype", class_sym);
         }
-//        if (GetFlag(n, "feature:new"))
         Printf(f->code, "%s\n", tm);
-      } else /* if(!is_setter) */ {
-  Swig_warning(WARN_TYPEMAP_OUT_UNDEF, input_file, line_number,
-              "Unable to use return type %s in function %s.\n",
-              SwigType_str(type, 0), name);
+      } else {
+        Swig_error(input_file, line_number,
+             "Unable to use return type %s in function %s.\n",
+             SwigType_str(type, 0), name);
           return SWIG_ERROR;
       }
     }
-/*
-    if (actioncode) {
-      Append(f->code, actioncode);
-      Delete(actioncode);
-    }
-*/
-
     emit_return_variable(n, type, f);
-
     if(dtor_attr) {
       String *swig_getter = Getattr(getCurrentClass(), "gwion:swig_getter");
       Printf(f->code, "if(%s(o)) {\n", swig_getter);
@@ -385,14 +369,14 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
     if(!dtor_attr && !default_ctor) {
       String *f_target = !getCurrentClass() ? f_init : f_classInit;
       Printf(f_target, "\nCHECK_BB(gwi_func_ini(gwi, \"%s\", \"%s\"))\n", ffi, symname);
-    Delete(symname);
-    if(import_args(f_target, ((mvar || mfunc))? nextSibling(l) : l) == SWIG_ERROR)
-      return SWIG_ERROR;
-    const char* flag = ((is_member && !static_attr) || mfunc) &&
+      Delete(symname);
+      if(import_args(f_target, ((mvar || mfunc))? nextSibling(l) : l) == SWIG_ERROR)
+        return SWIG_ERROR;
+      const char* flag = ((is_member && !static_attr) || mfunc) &&
           !ctor_attr?
         "ae_flag_member" : (getCurrentClass() || Getattr(n, "feature:nspc"))?
-        "ae_flag_static" : "(ae_flag)ae_flag_global";
-      Printf(f_target, "CHECK_BB(gwi_func_end(gwi, %s, %s))\n\n", flag, wname);
+        "ae_flag_static" : "(ae_flag)ae_flag_none";
+      Printf(f_target, "CHECK_BB(gwi_func_end(gwi, %s, %s))\n\n", wname, flag);
     }
     Delete(cleanup);
     Delete(outarg);
@@ -405,23 +389,39 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
     Swig_require("enumvalueDeclaration", n, "name", "value", NIL);
     String   *name  = Getattr(n, "name");
     SwigType *value  = Getattr(n, "value");
-    Printf(f_init, "CHECK_BB(gwi_enum_add(gwi, (m_str)\"%s\", (m_uint)%s))\n", name, value);
+Printf(stdout, "%p\n", getCurrentClass());
+    String *f_target = !getCurrentClass() ? f_init : f_classInit;
+    Printf(f_target, "CHECK_BB(gwi_enum_add(gwi, (m_str)\"%s\", (m_uint)%s))\n", name, value);
   }
 
   virtual int enumDeclaration(Node *n) {
 //    Swig_require("enumDeclaration", n, "type", NIL);
     String   *name  = Getattr(n, "name");
     SwigType *type  = Getattr(n, "type");
-    Printf(f_init, "CHECK_BB(gwi_enum_ini(gwi, (m_str)\"%s\"))\n", name, type);
+//    SwigType *type  = Getattr(n, "typename");
+    String *f_target = !getCurrentClass() ? f_init : f_classInit;
+//    String *name_target = !getCurrentClass() ? name : f_classInit;
+
+if(getCurrentClass()) {
+  char *cname = NULL, *tmp = Strchr(name, ':');
+  while((tmp = Strchr(tmp, ':'))) {
+    ++tmp;
+puts(tmp);
+    cname = tmp;
+  }
+  if(cname)
+    name = NewString(cname);
+}
+
+    Printf(f_target, "CHECK_BB(gwi_enum_ini(gwi, (m_str)\"%s\"))\n", name);
     Node *c;
     for (c = firstChild(n); c; c = nextSibling(c))
       enumitem(c);
-    Printf(f_init, "CHECK_BB(gwi_enum_end(gwi))\n");
+    Printf(f_target, "CHECK_BB(gwi_enum_end(gwi))\n");
     return SWIG_OK;
   }
 
   virtual int constantWrapper(Node *n) {
-//    Swig_save("constantWrapper", n);
     Swig_require("constantWrapper", n, "*sym:name", "type", "value", NIL);
     String *symname = Getattr(n, "sym:name");
     SwigType *type = Getattr(n, "type");
@@ -429,7 +429,7 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
     String *tm = Swig_typemap_lookup("constant", n, value, 0);
     String *ffi  = Swig_typemap_lookup("ffi", n, value, 0);
     if(!ffi) {
-      Swig_warning(WARN_TYPEMAP_CONST_UNDEF, input_file, line_number,
+      Swig_error(input_file, line_number,
           "'ffi' undefined for constant value %s = %s\n",
           SwigType_str(type, 0), value);
       return SWIG_ERROR;
@@ -450,11 +450,10 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
           " (const m_uint*)%s_value))\n\n", flag, symname);
       Delete(flag);
     } else {
-      Swig_warning(WARN_TYPEMAP_CONST_UNDEF, input_file, line_number,
+      Swig_error(input_file, line_number,
           "Unsupported constant value %s = %s\n", SwigType_str(type, 0), value);
       return SWIG_ERROR;
     }
-//    Swig_restore(n);
     return SWIG_OK;
   }
 
@@ -480,12 +479,8 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
         base = Next(base);
       }
       Setattr(n, "base_class", base_class);
-    } else {
+    } else
       Printf(f_types, "static Type t_%s;\n", symname);
-//      Printf(f_init,
-//          "t_%s = gwi_mk_type(gwi, (m_str)\"%s\", SZ_INT, \"%s\");\n",
-//          symname, symname, Getattr(n, "feature:inherit") ?: "Object"); // TODO test mem
-    }
     if(!baselist) {
       String *swig_getter = NewStringf("GW_%s", symname);
       Printf(f_wrappers, "static m_int o_%s_swig;\n", symname);
@@ -499,16 +494,20 @@ if ((tm = Swig_typemap_lookup_out("out", n, Swig_cresult_name(), f, actioncode))
 
     String* default_ctor = Getattr(n, "gwion:default_ctor");
     bool is_abstract = (!default_ctor && Getattr(n, "gwion:has_ctor")) || GetFlag(n, "abstracts");
-    basename = Getattr(base_class, "name");
-    Printf(f_init, "const Type t_%s = gwi_class_ini(gwi, \"%s\", \"%s\");\n",
-        symname, symname, basename);
+    basename = base_class ? Getattr(base_class, "name") : NULL;
+    if(basename)
+      Printf(f_init, "/*const Type */t_%s = gwi_class_ini(gwi, \"%s\", \"%s\");\n",
+          symname, symname, basename);
+    else
+      Printf(f_init, "/*const Type */t_%s = gwi_class_ini(gwi, \"%s\", NULL);\n",
+          symname, symname);
     if(is_abstract || !default_ctor)
       Printf(f_init, "SET_FLAG(t_%s, abstract);\n", symname);
     if(!baselist)
       Printf(f_init,
           "CHECK_BB(gwi_item_ini(gwi, \"@internal\", \"@Swig_%s_Object\"))\n"
           "CHECK_BB((o_%s_swig = gwi_item_end(gwi, ae_flag_member, NULL)))\n",
-          symname, symname, symname, symname);
+          symname, symname);
     /* Done, close the class and dump its definition to the init function */
     Dump(f_classInit, f_init);
     Clear(f_classInit);
